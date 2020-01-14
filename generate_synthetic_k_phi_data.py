@@ -130,7 +130,7 @@ ubound = peak_2[0] + peak_2[1]
 df = pd.DataFrame()
 df['TVDSS'] = np.linspace(top_int,bot_int,(bot_int-top_int)/sr)
 n = len(df) # length of the array
-
+nbins = 100; # resolution of the probability distributions
 
 
 def create_approximately_structured_single_variable(opt_plot_prob_map=True, opt_plot_dummy_var=True):
@@ -139,8 +139,8 @@ def create_approximately_structured_single_variable(opt_plot_prob_map=True, opt_
     geology better. The "approximate sortingis obtained by picking a random 
     value based on a probability map defined by two normal distributions.
     
-    The only arguments required are the variables that define the normal 
-    distributions on the probability map (function "probability_density") and 
+    The only arguments required are the variables that define a sum of gaussian
+    distributions on the probability map (function "probability_definition") and 
     the length of the dummy data array (obtained automatically).
     
     -- The optional argument opt_plot_prob_map (default=True, otherwise False)
@@ -152,8 +152,8 @@ def create_approximately_structured_single_variable(opt_plot_prob_map=True, opt_
     Python by HARBR (30th December 2019)'''
      
 #    def probability_density(x,y,xoffset1,yoffset1,ampl1,peakwidth1,xoffset2,yoffset2,ampl2,peakwidth2,*xoffsetn,*yoffsetn,*ampln,*peakwidthn):
-    def probability_density(x,y,peak_1,peak_2):
-        '''Defines the "map" with two probability density distributions
+    def probability_definition(x,y,peak_1,peak_2):
+        '''Defines the "map" with probability density distributions
         x, y are the x and y data
         peak_1 and peak_2 are tuples containing 4 elements each:
         -- xoffset defines the x position of the probability peak
@@ -175,12 +175,13 @@ def create_approximately_structured_single_variable(opt_plot_prob_map=True, opt_
     
     def bins(start,end,n,yi,peak_1,peak_2):
         '''Small function to set the number of bins at the "cross-section"
-        @yi: the cumulative distribution curve is divided into n equal-sized bins'''
+        @yi: the cumulative distribution curve is divided into n equal-sized bins.
+        Note that the result is not normalised, i.e. y[n-1] is not 1.0 '''
         width = (end-start)/n
         y = []
-        y.append(probability_density(yi,start+0.5*width,peak_1,peak_2))
+        y.append(probability_definition(yi,start+0.5*width,peak_1,peak_2))
         for i in range(1,n):
-            y.append(y[i-1] + probability_density(yi,(i+0.5)*width,peak_1,peak_2))
+            y.append(y[i-1] + probability_definition(yi,(i+0.5)*width,peak_1,peak_2))
         return(y)   
     
     
@@ -194,18 +195,18 @@ def create_approximately_structured_single_variable(opt_plot_prob_map=True, opt_
 
     for i in range(n):
         # z = the binned cumulative probabilty at the specific value
-        z = bins(lbound,ubound,n,r,peak_1,peak_2)
+        z = bins(lbound,ubound,nbins,r,peak_1,peak_2)
         # small function to scale random value
-        r = scaled_random(0,z[n-1])
+        r = scaled_random(0,z[nbins-1])
     
         if (r<z[0]):
-            myresults.append(lbound+(ubound-lbound)/n*(r/z[0]))
+            myresults.append(lbound+(ubound-lbound)/nbins*(r/z[0]))
         else:
             j = 1
-            while(z[j]<r and j<n):
+            while(z[j]<r and j<nbins):
                 j += 1
             
-        myresults.append(lbound+(j+(r-z[j-1])/(z[j]-z[j-1]))*(ubound-lbound)/n)
+        myresults.append(lbound+(j+(r-z[j-1])/(z[j]-z[j-1]))*(ubound-lbound)/nbins)
         r = myresults[i]
 
     # This part is only to visualize the probability map - not necessary for 
@@ -214,8 +215,8 @@ def create_approximately_structured_single_variable(opt_plot_prob_map=True, opt_
         # Create arrays for the probability map
         # N.B. the number of points in the isa reduced by a factor 10 to speed up
         # (it1's for visualization only anyway)
-        xprob = np.linspace(lbound,ubound,n/10) 
-        yprob = np.linspace(lbound,ubound,n/10)
+        xprob = np.linspace(lbound,ubound,nbins/10) 
+        yprob = np.linspace(lbound,ubound,nbins/10)
     
         # create a meshgrid
         xxprob,yyprob = np.meshgrid(xprob,yprob,sparse=True)
